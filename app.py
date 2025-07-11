@@ -75,7 +75,32 @@ def calcular_wacc_y_roic(ticker):
         st.error(f"Error al calcular WACC y ROIC para {ticker.upper()}: {e}")
         return None, None, None
 
-# Función para obtener los datos financieros de cada ticker
+# Función para calcular el P/FCF (Precio sobre Flujo de Caja Libre)
+def calcular_pfcf(price, fcf, shares_outstanding):
+    if fcf and shares_outstanding:
+        fcf_por_accion = fcf / shares_outstanding
+        return price / fcf_por_accion
+    return None
+
+# Función para calcular el Payout Ratio
+def calcular_payout_ratio(dividend_yield, price, eps):
+    if dividend_yield and eps:
+        dividend_por_accion = dividend_yield * price  # Dividendo por acción
+        return dividend_por_accion / eps
+    return None
+
+# Función para calcular el Current Ratio
+def calcular_current_ratio(balance_sheet):
+    try:
+        activos_corrientes = balance_sheet.loc["Total Current Assets"].iloc[0]
+        pasivos_corrientes = balance_sheet.loc["Total Current Liabilities"].iloc[0]
+        if pasivos_corrientes != 0:
+            return activos_corrientes / pasivos_corrientes
+        return None
+    except Exception as e:
+        return None
+
+# Función para obtener los datos financieros de cada ticker y calcular los ratios
 def obtener_datos_financieros(ticker):
     try:
         stock = yf.Ticker(ticker)
@@ -86,59 +111,45 @@ def obtener_datos_financieros(ticker):
 
         # Datos básicos
         price = info.get("currentPrice")
-        name = info.get("longName", ticker)
-        sector = info.get("sector", "N/D")
-        country = info.get("country", "N/D")
-        industry = info.get("industry", "N/D")
+        shares = info.get("sharesOutstanding")
+        dividend_yield = info.get("dividendYield")
+        eps = info.get("epsTrailingTwelveMonths")
 
-        # Ratios de valoración
+        # Calcular P/FCF
+        fcf = cf.loc["Free Cash Flow"].iloc[0] if "Free Cash Flow" in cf.index else None
+        pfcf = calcular_pfcf(price, fcf, shares)
+
+        # Calcular Payout Ratio
+        payout_ratio = calcular_payout_ratio(dividend_yield, price, eps)
+
+        # Calcular Current Ratio
+        current_ratio = calcular_current_ratio(bs)
+
+        # Otros ratios disponibles
         pe = info.get("trailingPE")
         pb = info.get("priceToBook")
-        dividend = info.get("dividendRate")
-        dividend_yield = info.get("dividendYield")
-        payout = info.get("payoutRatio")
-        
-        # Ratios de rentabilidad
         roa = info.get("returnOnAssets")
         roe = info.get("returnOnEquity")
-        
-        # Ratios de liquidez
-        current_ratio = info.get("currentRatio")
-        quick_ratio = info.get("quickRatio")
-        
-        # Ratios de deuda
         ltde = info.get("longTermDebtToEquity")
         de = info.get("debtToEquity")
-        
-        # Margenes
         op_margin = info.get("operatingMargins")
         profit_margin = info.get("profitMargins")
-        
-        # Flujo de caja
-        fcf = cf.loc["Free Cash Flow"].iloc[0] if "Free Cash Flow" in cf.index else None
-        shares = info.get("sharesOutstanding")
-        pfcf = price / (fcf / shares) if fcf and shares else None
-        
-        # Llamada a la nueva función para obtener WACC y ROIC
+
+        # Llamada a la función para obtener WACC y ROIC
         wacc, roic, diferencia_roic_wacc = calcular_wacc_y_roic(ticker)
 
         return {
             "Ticker": ticker,
-            "Nombre": name,
-            "Sector": sector,
-            "País": country,
-            "Industria": industry,
+            "Nombre": info.get("longName", ticker),
             "Precio": price,
             "P/E": pe,
             "P/B": pb,
             "P/FCF": pfcf,
-            "Dividend Year": dividend,
             "Dividend Yield %": dividend_yield,
-            "Payout Ratio": payout,
+            "Payout Ratio": payout_ratio,
             "ROA": roa,
             "ROE": roe,
             "Current Ratio": current_ratio,
-            "Quick Ratio": quick_ratio,
             "LtDebt/Eq": ltde,
             "Debt/Eq": de,
             "Oper Margin": op_margin,
@@ -257,7 +268,7 @@ def main():
                 ax.set_ylabel("Dividend Yield %")
                 st.pyplot(fig)
                 plt.close()
-            
+
             # Sección 3: Rentabilidad y Eficiencia
             st.header("📈 Rentabilidad y Eficiencia")
             
