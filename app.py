@@ -3,6 +3,7 @@ import pandas as pd
 import yfinance as yf
 import time
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 
 # Configuración de la página
 st.set_page_config(
@@ -93,6 +94,7 @@ def obtener_datos_financieros(ticker):
         # Ratios de valoración
         pe = info.get("trailingPE")
         pb = info.get("priceToBook")
+        dividend = info.get("dividendRate")
         dividend_yield = info.get("dividendYield")
         payout = info.get("payoutRatio")
         
@@ -100,15 +102,9 @@ def obtener_datos_financieros(ticker):
         roa = info.get("returnOnAssets")
         roe = info.get("returnOnEquity")
         
-        # Calcular el Current Ratio (si no está disponible)
-        current_assets = bs.loc["Total Current Assets"].iloc[0] if "Total Current Assets" in bs.index else 0
-        current_liabilities = bs.loc["Total Current Liabilities"].iloc[0] if "Total Current Liabilities" in bs.index else 0
-        current_ratio = current_assets / current_liabilities if current_liabilities != 0 else None
-        
-        # Calcular el Payout Ratio (si no está disponible)
-        dividend_rate = info.get("dividendRate")
-        trailing_eps = info.get("trailingEps")
-        payout_ratio = dividend_rate / trailing_eps if dividend_rate and trailing_eps else None
+        # Ratios de liquidez
+        current_ratio = info.get("currentRatio")
+        quick_ratio = info.get("quickRatio")
         
         # Ratios de deuda
         ltde = info.get("longTermDebtToEquity")
@@ -118,7 +114,7 @@ def obtener_datos_financieros(ticker):
         op_margin = info.get("operatingMargins")
         profit_margin = info.get("profitMargins")
         
-        # Flujo de caja (Free Cash Flow)
+        # Flujo de caja
         fcf = cf.loc["Free Cash Flow"].iloc[0] if "Free Cash Flow" in cf.index else None
         shares = info.get("sharesOutstanding")
         pfcf = price / (fcf / shares) if fcf and shares else None
@@ -136,11 +132,13 @@ def obtener_datos_financieros(ticker):
             "P/E": pe,
             "P/B": pb,
             "P/FCF": pfcf,
+            "Dividend Year": dividend,
             "Dividend Yield %": dividend_yield,
-            "Payout Ratio": payout_ratio,  # Calculado
+            "Payout Ratio": payout,
             "ROA": roa,
             "ROE": roe,
-            "Current Ratio": current_ratio,  # Calculado
+            "Current Ratio": current_ratio,
+            "Quick Ratio": quick_ratio,
             "LtDebt/Eq": ltde,
             "Debt/Eq": de,
             "Oper Margin": op_margin,
@@ -227,9 +225,6 @@ def main():
                 "Ticker", "Nombre", "Sector", "Precio", "P/E", "P/B", "P/FCF", 
                 "Dividend Yield %", "ROE", "Debt/Eq", "Profit Margin", "WACC", "ROIC", "Creación de Valor (WACC vs ROIC)"
             ]
-            
-            # Filtrar solo las columnas que existen
-            columnas_mostrar = [col for col in columnas_mostrar if col in df.columns]
             
             st.dataframe(
                 df[columnas_mostrar].dropna(how='all', axis=1),
