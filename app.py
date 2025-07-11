@@ -3,7 +3,6 @@ import pandas as pd
 import yfinance as yf
 import time
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
 
 # Configuración de la página
 st.set_page_config(
@@ -94,7 +93,6 @@ def obtener_datos_financieros(ticker):
         # Ratios de valoración
         pe = info.get("trailingPE")
         pb = info.get("priceToBook")
-        dividend = info.get("dividendRate")
         dividend_yield = info.get("dividendYield")
         payout = info.get("payoutRatio")
         
@@ -104,7 +102,6 @@ def obtener_datos_financieros(ticker):
         
         # Ratios de liquidez
         current_ratio = info.get("currentRatio")
-        quick_ratio = info.get("quickRatio")
         
         # Ratios de deuda
         ltde = info.get("longTermDebtToEquity")
@@ -114,7 +111,7 @@ def obtener_datos_financieros(ticker):
         op_margin = info.get("operatingMargins")
         profit_margin = info.get("profitMargins")
         
-        # Flujo de caja
+        # Flujo de caja (Free Cash Flow)
         fcf = cf.loc["Free Cash Flow"].iloc[0] if "Free Cash Flow" in cf.index else None
         shares = info.get("sharesOutstanding")
         pfcf = price / (fcf / shares) if fcf and shares else None
@@ -132,13 +129,13 @@ def obtener_datos_financieros(ticker):
             "P/E": pe,
             "P/B": pb,
             "P/FCF": pfcf,
-            "Dividend Year": dividend,
+            "Dividend Year": dividend_yield,
             "Payout Ratio": payout,
             "ROA": roa,
             "ROE": roe,
             "Current Ratio": current_ratio,
-            "LtDebt/Eq": ltdebt,
-            "Debt/Eq": debt,
+            "LtDebt/Eq": ltde,
+            "Debt/Eq": de,
             "Oper Margin": op_margin,
             "Profit Margin": profit_margin,
             "WACC": wacc,
