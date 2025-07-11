@@ -100,8 +100,15 @@ def obtener_datos_financieros(ticker):
         roa = info.get("returnOnAssets")
         roe = info.get("returnOnEquity")
         
-        # Ratios de liquidez
-        current_ratio = info.get("currentRatio")
+        # Calcular el Current Ratio (si no está disponible)
+        current_assets = bs.loc["Total Current Assets"].iloc[0] if "Total Current Assets" in bs.index else 0
+        current_liabilities = bs.loc["Total Current Liabilities"].iloc[0] if "Total Current Liabilities" in bs.index else 0
+        current_ratio = current_assets / current_liabilities if current_liabilities != 0 else None
+        
+        # Calcular el Payout Ratio (si no está disponible)
+        dividend_rate = info.get("dividendRate")
+        trailing_eps = info.get("trailingEps")
+        payout_ratio = dividend_rate / trailing_eps if dividend_rate and trailing_eps else None
         
         # Ratios de deuda
         ltde = info.get("longTermDebtToEquity")
@@ -129,11 +136,11 @@ def obtener_datos_financieros(ticker):
             "P/E": pe,
             "P/B": pb,
             "P/FCF": pfcf,
-            "Dividend Year": dividend_yield,
-            "Payout Ratio": payout,
+            "Dividend Yield %": dividend_yield,
+            "Payout Ratio": payout_ratio,  # Calculado
             "ROA": roa,
             "ROE": roe,
-            "Current Ratio": current_ratio,
+            "Current Ratio": current_ratio,  # Calculado
             "LtDebt/Eq": ltde,
             "Debt/Eq": de,
             "Oper Margin": op_margin,
@@ -220,6 +227,9 @@ def main():
                 "Ticker", "Nombre", "Sector", "Precio", "P/E", "P/B", "P/FCF", 
                 "Dividend Yield %", "ROE", "Debt/Eq", "Profit Margin", "WACC", "ROIC", "Creación de Valor (WACC vs ROIC)"
             ]
+            
+            # Filtrar solo las columnas que existen
+            columnas_mostrar = [col for col in columnas_mostrar if col in df.columns]
             
             st.dataframe(
                 df[columnas_mostrar].dropna(how='all', axis=1),
