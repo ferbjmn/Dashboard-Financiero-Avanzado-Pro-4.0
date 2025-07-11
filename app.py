@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import matplotlib.pyplot as plt
-import seaborn as sns
 import time
-from datetime import datetime, timedelta
 
 # Configuración de la página
 st.set_page_config(
@@ -47,27 +44,6 @@ def calcular_wacc(info, balance_sheet):
         st.error(f"Error calculando WACC: {str(e)}")
         return None, None
 
-def calcular_crecimiento_historico(financials, metric):
-    try:
-        if metric not in financials.index:
-            return None
-            
-        datos = financials.loc[metric].dropna().iloc[:4]  # Últimos 4 periodos
-        if len(datos) < 2:
-            return None
-            
-        primer_valor = datos.iloc[-1]
-        ultimo_valor = datos.iloc[0]
-        años = len(datos) - 1
-        
-        if primer_valor == 0:
-            return None
-            
-        cagr = (ultimo_valor / primer_valor) ** (1 / años) - 1
-        return cagr
-    except:
-        return None
-
 def obtener_datos_financieros(ticker):
     try:
         stock = yf.Ticker(ticker)
@@ -86,7 +62,6 @@ def obtener_datos_financieros(ticker):
         # Ratios de valoración
         pe = info.get("trailingPE")
         pb = info.get("priceToBook")
-        dividend = info.get("dividendRate")
         dividend_yield = info.get("dividendYield")
         payout = info.get("payoutRatio")
         
@@ -105,9 +80,8 @@ def obtener_datos_financieros(ticker):
         op_margin = info.get("operatingMargins")
         profit_margin = info.get("profitMargins")
         
-        # Flujo de caja
+        # Flujo de caja (Free Cash Flow)
         fcf = cf.loc["Free Cash Flow"].iloc[0] if "Free Cash Flow" in cf.index else None
-        shares = info.get("sharesOutstanding")
         pfcf = price / (fcf / shares) if fcf and shares else None
         
         # Cálculos avanzados
@@ -116,17 +90,6 @@ def obtener_datos_financieros(ticker):
         wacc, total_debt = calcular_wacc(info, bs)
         capital_invertido = total_debt + equity if total_debt and equity else None
         roic = ebit * (1 - Tc) / capital_invertido if ebit and capital_invertido else None
-        
-        # Crecimientos
-        revenue_growth = calcular_crecimiento_historico(fin, "Total Revenue")
-        eps_growth = calcular_crecimiento_historico(fin, "Net Income")
-        fcf_growth = calcular_crecimiento_historico(cf, "Free Cash Flow") or calcular_crecimiento_historico(cf, "Operating Cash Flow")
-        
-        # Liquidez avanzada
-        cash_ratio = info.get("cashRatio")
-        operating_cash_flow = cf.loc["Operating Cash Flow"].iloc[0] if "Operating Cash Flow" in cf.index else None
-        current_liabilities = bs.loc["Total Current Liabilities"].iloc[0] if "Total Current Liabilities" in bs.index else None
-        cash_flow_ratio = operating_cash_flow / current_liabilities if operating_cash_flow and current_liabilities else None
         
         # Creación de Valor (WACC vs ROIC)
         if wacc and roic:
@@ -143,6 +106,7 @@ def obtener_datos_financieros(ticker):
             "Precio": price,
             "P/E": pe,
             "P/B": pb,
+            "P/FCF": pfcf,  # Agregamos el P/FCF
             "Dividend Yield %": dividend_yield,
             "Payout Ratio": payout,
             "ROA": roa,
@@ -156,9 +120,6 @@ def obtener_datos_financieros(ticker):
             "ROIC": roic,
             "Deuda Total": total_debt,
             "Patrimonio Neto": equity,
-            "Revenue Growth": revenue_growth,
-            "EPS Growth": eps_growth,
-            "FCF Growth": fcf_growth,
             "Creación de Valor (WACC vs ROIC)": creacion_valor  # Nueva columna con la diferencia
         }
     except Exception as e:
@@ -236,11 +197,10 @@ def main():
                     df[col] = df[col].apply(lambda x: f"{x:.2%}" if pd.notnull(x) else "N/D")
             
             columnas_mostrar = [
-                "Ticker", "Nombre", "Sector", "Precio", "P/E", "P/B", 
+                "Ticker", "Nombre", "Sector", "Precio", "P/E", "P/B", "P/FCF", 
                 "Dividend Yield %", "Payout Ratio", "ROA", "ROE", "Current Ratio",
                 "LtDebt/Eq", "Debt/Eq", "Oper Margin", "Profit Margin", "WACC", "ROIC",
-                "Deuda Total", "Patrimonio Neto", "Revenue Growth", "EPS Growth", 
-                "FCF Growth", "Creación de Valor (WACC vs ROIC)"
+                "Deuda Total", "Patrimonio Neto", "Creación de Valor (WACC vs ROIC)"
             ]
             
             st.dataframe(
