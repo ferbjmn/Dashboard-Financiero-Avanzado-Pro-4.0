@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
+import seaborn as sns
 import time
 from datetime import datetime, timedelta
 
@@ -127,6 +128,12 @@ def obtener_datos_financieros(ticker):
         current_liabilities = bs.loc["Total Current Liabilities"].iloc[0] if "Total Current Liabilities" in bs.index else None
         cash_flow_ratio = operating_cash_flow / current_liabilities if operating_cash_flow and current_liabilities else None
         
+        # Creación de Valor (WACC vs ROIC)
+        if wacc and roic:
+            creacion_valor = roic - wacc  # Diferencia entre ROIC y WACC
+        else:
+            creacion_valor = None
+
         return {
             "Ticker": ticker,
             "Nombre": name,
@@ -152,10 +159,7 @@ def obtener_datos_financieros(ticker):
             "Revenue Growth": revenue_growth,
             "EPS Growth": eps_growth,
             "FCF Growth": fcf_growth,
-            "Cash Ratio": cash_ratio,
-            "Cash Flow Ratio": cash_flow_ratio,
-            "Operating Cash Flow": operating_cash_flow,
-            "Current Liabilities": current_liabilities,
+            "Creación de Valor (WACC vs ROIC)": creacion_valor  # Nueva columna con la diferencia
         }
     except Exception as e:
         return {"Ticker": ticker, "Error": str(e)}
@@ -232,10 +236,11 @@ def main():
                     df[col] = df[col].apply(lambda x: f"{x:.2%}" if pd.notnull(x) else "N/D")
             
             columnas_mostrar = [
-                "Ticker", "Nombre", "Sector", "Precio", "P/E", "P/B", "Dividend Yield %", 
-                "Payout Ratio", "ROA", "ROE", "Current Ratio", "LtDebt/Eq", "Debt/Eq", 
-                "Oper Margin", "Profit Margin", "WACC", "ROIC", "Deuda Total", "Patrimonio Neto", 
-                "Revenue Growth", "EPS Growth", "FCF Growth"
+                "Ticker", "Nombre", "Sector", "Precio", "P/E", "P/B", 
+                "Dividend Yield %", "Payout Ratio", "ROA", "ROE", "Current Ratio",
+                "LtDebt/Eq", "Debt/Eq", "Oper Margin", "Profit Margin", "WACC", "ROIC",
+                "Deuda Total", "Patrimonio Neto", "Revenue Growth", "EPS Growth", 
+                "FCF Growth", "Creación de Valor (WACC vs ROIC)"
             ]
             
             st.dataframe(
